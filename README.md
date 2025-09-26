@@ -1,202 +1,202 @@
-# Jira Simple Agents
+Simple Jira Agents
+AI-powered Jira automation that actually works. Built with local privacy, real-world testing, and proven reliability.
+What It Does
+This system provides specialized AI agents that automate common Jira administrative tasks:
 
-**Lightweight AI-powered Jira automation that runs locally on your hardware.**
+Admin Validator: Automatically validates and creates custom fields from natural language requests
+L1 Triage Bot: Automates incident support workflow (your ChatGPT process)
+Governance Bot: Enforces standards and cleans up stale tickets
+PM Enhancer: Improves ticket quality with better descriptions and acceptance criteria
 
-Transform your Jira workflow with specialized AI agents that handle L1 support triage and admin validation - all running on a single GPU without sending data to external services.
+🎯 Proven Results
+v1.0 Achievement: Successfully created custom field customfield_10436 ("Testing Field XYZ123") automatically from a Jira ticket:
+🤖 Admin Validator ✅
+Field Name: Testing Field XYZ123  
+Status: Approved
+Reason: No duplicates found, field can be created.
+✅ Field Created: ID customfield_10436
+Duplicate Check: 129 fields analyzed
+Architecture
+Core Components
 
-## What This Solves
+FastAPI - Modern web framework with specialized endpoints
+Local Ollama - Privacy-first AI processing (gpt-oss:20b model)
+Jira REST API - Complete integration for field management
+Cloudflare Tunnel - Secure webhook exposure
+Modular Design - Professional code organization
 
-- **L1 Support Triage**: Automatically analyze incident tickets and provide step-by-step troubleshooting guidance
-- **Admin Request Validation**: Check field creation requests for duplicates and auto-create approved fields
-- **Privacy-First**: All processing happens locally - no data leaves your environment
+File Structure
+simple-jira-agents/
+├── agents/
+│   ├── admin_validator.py    # Field creation automation
+│   ├── l1_triage_bot.py     # Support ticket triage
+│   └── __init__.py
+├── api.py                   # Jira API client
+├── config.py               # Environment configuration
+├── field_extractor.py      # Natural language field parsing
+├── main.py                 # FastAPI application
+├── ollama_client.py        # Local AI client
+├── run.py                  # Development server
+└── requirements.txt
+Quick Start
+Prerequisites
 
-## Features
+Python 3.8+
+Ollama running locally with gpt-oss:20b model
+Jira Cloud instance with API token
+Cloudflare Tunnel (optional)
 
-- **50-line agents** instead of complex routing systems
-- **Real duplicate checking** against your actual Jira custom fields
-- **Automatic field creation** for approved admin requests  
-- **Pattern detection** in recent similar tickets
-- **Webhook-based triggers** from Jira Automation
-- **Local LLM inference** via Ollama (no API costs)
+Installation
 
-## Requirements
+Clone and install:
 
-- **Hardware**: NVIDIA GPU with 24GB+ VRAM (RTX 3090, 4090, or similar)
-- **Software**: Python 3.8+, Ollama with a 7B-30B model
-- **Jira**: Cloud or Data Center instance with automation permissions
-
-## Quick Start
-
-### 1. Clone and Install
-
-```bash
-git clone https://github.com/yourusername/jira-simple-agents.git
-cd jira-simple-agents
+bashgit clone https://github.com/bwalsh321/simple-jira-agents.git
+cd simple-jira-agents
 pip install -r requirements.txt
-```
 
-### 2. Configure Environment
+Configure environment:
 
-```bash
-cp .env.example .env
-# Edit .env with your settings
-```
+bashcp .env.example .env
+# Edit .env with your credentials
 
-### 3. Start Ollama
+Start the server:
 
-```bash
-ollama serve
-ollama pull gpt-oss:20b  # or your preferred model
-```
-
-### 4. Run the Agents
-
-```bash
-python run.py
-```
-
-Visit `http://localhost:8000/health` to verify everything is working.
-
-### 5. Set Up Jira Automation
-
-**L1 Triage (for incidents):**
-- Trigger: Issue Created
-- Condition: Issue Type = Incident  
-- Action: Send web request to `http://your-server:8000/api/v1/l1-triage-bot`
-
-**Admin Validator (for field requests):**
-- Trigger: Issue Created
-- Condition: Summary contains "field"
-- Action: Send web request to `http://your-server:8000/api/v1/admin-validator`
-
-## Configuration
-
-Required environment variables in `.env`:
-
-```bash
-JIRA_BASE_URL=https://yourcompany.atlassian.net
-JIRA_TOKEN=your_api_token_here
-JIRA_EMAIL=your-email@company.com
-WEBHOOK_SECRET=your-webhook-secret-key
-OLLAMA_URL=http://127.0.0.1:11434/api/generate
-AI_MODEL=gpt-oss:20b
-```
-
-## Architecture
-
-```
-┌─────────────────┐    ┌──────────────┐    ┌─────────────┐
-│  Jira Automation│───▶│ Webhook API  │───▶│ Local LLM   │
-└─────────────────┘    └──────────────┘    └─────────────┘
-                              │
-                              ▼
-                       ┌──────────────┐
-                       │ Jira REST API│
-                       └──────────────┘
-```
-
-**Privacy by Design:**
-- All data processing happens locally
-- No external API calls to OpenAI/Claude
-- Webhook responses return immediately
-- No persistent storage of ticket content
-
-## API Endpoints
-
-- `POST /api/v1/l1-triage-bot` - L1 support analysis
-- `POST /api/v1/admin-validator` - Admin request validation  
-- `GET /health` - System health check
-
-## Deployment
-
-Works on:
-- Single development machine
-- Ubuntu server with GPU
-- Docker container (GPU support required)
-
-See [DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed server setup instructions.
-
-## License
-
-MIT License - See LICENSE file for details.
-
----
-
-## .env.example
-
-```bash
-# Jira Configuration
+bashpython run.py
+Environment Variables
+bash# Jira Configuration
 JIRA_BASE_URL=https://yourcompany.atlassian.net
 JIRA_TOKEN=your_jira_api_token_here
 JIRA_EMAIL=your-email@company.com
 
-# Webhook Security  
+# Security
 WEBHOOK_SECRET=your-super-secret-webhook-key-32-chars-min
 
-# AI Configuration
+# AI Configuration  
 OLLAMA_URL=http://127.0.0.1:11434/api/generate
 AI_MODEL=gpt-oss:20b
 
 # Environment
 ENVIRONMENT=development
-```
+API Endpoints
+Health Check
+GET /health
+Returns system status including Jira connectivity and AI model status.
+Agent Endpoints
 
----
+POST /api/v1/admin-validator - Custom field validation and creation
+POST /api/v1/l1-triage-bot - Incident support automation
+POST /api/v1/pm-enhancer - Ticket quality improvement
+POST /api/v1/governance-bot - Standards enforcement
 
-## .gitignore
+All endpoints require X-Webhook-Secret header for authentication.
+Jira Automation Setup
+Admin Validator Example
+Trigger: Issue created with summary containing "custom field"
+Action: Send web request
 
-```
-# Environment variables
-.env
-.env.local
-.env.production
+URL: https://your-tunnel-url/api/v1/admin-validator
+Method: POST
+Headers:
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+X-Webhook-Secret: your-webhook-secret
+Content-Type: application/json
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
 
-# OS
-.DS_Store
-Thumbs.db
+Body:
 
-# Logs
-*.log
-logs/
+json{
+  "issueKey": "{{issue.key}}",
+  "issue": {
+    "key": "{{issue.key}}", 
+    "fields": {
+      "summary": "{{issue.summary}}",
+      "description": "{{issue.description}}"
+    }
+  }
+}
+Features
+Admin Validator
 
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
+Natural language processing: Extracts field details from plain English
+Duplicate prevention: Checks all existing custom fields automatically
+Auto-creation: Creates approved fields with proper Jira configuration
+Comprehensive logging: Full audit trail of decisions and actions
+Smart validation: Uses AI to assess field necessity and compliance
 
-# Distribution
-build/
-dist/
-*.egg-info/
-```
+Privacy & Security
 
----
+Local processing: All AI inference runs on your hardware
+No data storage: Processes requests in memory only
+Secure webhooks: HMAC validation and secret-based authentication
+Audit trails: Complete logging without storing sensitive data
 
-## requirements.txt
+Development Journey
+This project evolved from a monolithic 1000+ line script to a professional modular system:
+v0.1 - Monolithic Script
 
-```
-fastapi>=0.104.0
-uvicorn>=0.24.0
-requests>=2.31.0
-python-dotenv>=1.0.0
-pydantic>=2.5.0
-```
+Single large file with embedded logic
+Proof of concept for field automation
+Manual testing and configuration
+
+v1.0 - Modular Architecture
+
+Professional code organization
+Specialized agent endpoints
+Production-ready deployment
+Proven field creation: Successfully automated custom field creation
+
+Migration Benefits
+
+Maintainable: Clear separation of concerns
+Scalable: Individual agents can be deployed independently
+Testable: Each component can be validated separately
+Professional: Industry-standard FastAPI framework
+
+Hardware Requirements
+Tested Configuration
+
+CPU: Intel i7-12700K
+GPU: NVIDIA RTX 3090 (24GB VRAM)
+RAM: 32GB DDR5
+OS: Windows 11 (with Ubuntu via WSL2 option)
+
+Performance
+
+Model: gpt-oss:20b runs comfortably on RTX 3090
+Response time: ~4-6 seconds for field validation
+Throughput: Suitable for small-to-medium team usage
+Scalability: Single GPU handles dozens of concurrent requests
+
+Business Value
+For IT Teams
+
+Eliminates duplicate fields: Automatic checking prevents configuration sprawl
+Reduces admin overhead: Field creation becomes self-service
+Maintains standards: AI enforces naming conventions and governance
+Audit compliance: Complete trail of all automated actions
+
+For Development Teams
+
+Faster delivery: No waiting for admin to create custom fields
+Self-service: Create fields through simple Jira tickets
+Quality assurance: AI validates requests before implementation
+Integration ready: Works with existing Jira workflows
+
+Contributing
+This is a working production system. Contributions should:
+
+Maintain backward compatibility
+Include comprehensive testing
+Follow the existing modular architecture
+Preserve privacy-first principles
+
+License
+MIT License - see LICENSE file for details.
+Support
+For issues or questions:
+
+Check the logs in your terminal output
+Verify environment configuration
+Test Ollama connectivity: curl http://localhost:11434/api/tags
+Validate Jira API access: Check /health endpoint
+

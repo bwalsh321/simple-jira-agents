@@ -85,7 +85,7 @@ async def admin_validator_webhook(request: Request):
 async def health_check():
     """Health check endpoint"""
     from ollama_client import test_ollama_connection
-    from jira_api import JiraAPI
+    from api import JiraAPI
     
     # Test Ollama
     ollama_status = test_ollama_connection(config)
@@ -104,6 +104,39 @@ async def health_check():
             "model": config.model
         }
     }
+
+
+from engines.hygiene_engine import HygieneEngine
+
+@app.post("/api/v1/hygiene")
+async def hygiene_webhook(request: Request):
+    # shared-secret check
+    if request.headers.get("x-webhook-secret") != config.webhook_secret:
+        raise HTTPException(status_code=401, detail="Invalid webhook secret")
+
+    # accept either Jira payload or a simple body
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    # default to a sweep if no event provided
+    evt = (body or {}).get("eventType") or "scheduled_sweep"
+
+    engine = HygieneEngine(
+        projects=["SBX"],               # your sandbox project key
+        stale_days=7,
+        enable_stale=True,
+        enable_missing_fields=True,
+        enable_workflow_validator=True,
+        # keep side-effects OFF while testing:
+        stale_add_comment=True,
+        missing_fields_add_comment=False,
+        workflow_add_comment=False,
+    )
+    return engine.process({"eventType": evt})
+
+
 
 if __name__ == "__main__":
     import uvicorn

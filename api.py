@@ -300,27 +300,53 @@ class JiraAPI:
             logger.error(f"Comment error: {e}")
             return {"error": str(e)}
 
-    def search_issues(self, jql: str, max_results: int = 50) -> Dict:
-        """Search issues using JQL"""
+    def search_issues(
+        self,
+        jql: str,
+        max_results: int = 50,
+        start_at: int = 0,
+        fields: list[str] | None = None,
+    ) -> dict:
+        """
+        Jira Cloud 2025+:
+        Use GET /rest/api/3/search/jql with query params.
+        - jql: string
+        - startAt: int
+        - maxResults: int
+        - fields: comma-separated list
+        Returns {"success": True, "issues": [...], "total": N} or {"error": ...}
+        """
         try:
-            url = f"{self.base_url}/rest/api/3/search"
-            
-            payload = {
+            url = f"{self.base_url}/rest/api/3/search/jql"
+
+            # Jira expects comma-separated fields for GET
+            default_fields = [
+                "summary", "description", "issuetype", "priority",
+                "created", "status", "reporter"
+            ]
+            field_list = fields if fields is not None else default_fields
+            params = {
                 "jql": jql,
-                "maxResults": max_results,
-                "fields": ["summary", "description", "issuetype", "priority", "created", "status", "reporter"]
+                "startAt": str(max(0, int(start_at))),
+                "maxResults": str(max(1, int(max_results))),
+                "fields": ",".join(field_list),
             }
-            
-            logger.info(f"JQL search: {jql}")
-            
-            response = self.session.post(url, json=payload)
-            response.raise_for_status()
-            
-            result = response.json()
-            logger.info(f"Found {result.get('total', 0)} issues")
-            
-            return {"success": True, "issues": result.get("issues", []), "total": result.get("total", 0)}
-            
+
+            logger.info(f"JQL search (GET /search/jql): {jql}")
+            resp = self.session.get(url, params=params, timeout=30)
+
+            if resp.status_code != 200:
+                body = resp.text[:800]
+                logger.error(f"JQL search failed [{resp.status_code}]: {body}")
+                return {"error": f"HTTP {resp.status_code}", "body": body, "jql": jql}
+
+            data = resp.json()
+            issues = data.get("issues", [])
+            total = data.get("total", len(issues))
+            logger.info(f"Found {total} issues (returned {len(issues)})")
+
+            return {"success": True, "issues": issues, "total": total}
+
         except Exception as e:
-            logger.error(f"JQL search failed: {e}")
-            return {"error": str(e)}
+            logger.error(f"JQL search exception: {e}")
+        return {"error": str(e), "jql": jql}

@@ -16,12 +16,12 @@ from rules.base_rule import BaseRule
 
 # Soft imports to keep dev smooth without creds
 try:
-    from config import Config
+    from core.config import Config
     try:
         # Support either jira_api.py or api.py naming
-        from api import JiraAPI as _JiraAPI
+        from tools.jira_api import JiraAPI as _JiraAPI
     except Exception:
-        from api import JiraAPI as _JiraAPI  # fallback
+        from tools.jira_api import JiraAPI as _JiraAPI  # fallback
     _HAS_JIRA = True
 except Exception:
     _HAS_JIRA = False

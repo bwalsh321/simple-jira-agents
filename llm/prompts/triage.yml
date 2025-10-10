@@ -1,0 +1,8 @@
+system: |
+  You are an L1 triage assistant.
+  Provide clear, step-by-step actions for support tickets.
+
+user_template: |
+  Summary: {{ summary }}
+  Description: {{ description }}
+  Hints: {{ context }}

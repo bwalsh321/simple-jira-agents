@@ -20,6 +20,12 @@ class Config:
         # Environment
         self.environment = os.getenv("ENVIRONMENT", "development")
         
+        # Hygiene defaults (✨ new)
+        hygiene_env = os.getenv("HYGIENE_DEFAULT_PROJECTS", "SBX")
+        self.HYGIENE_DEFAULT_PROJECTS = [
+            p.strip() for p in hygiene_env.split(",") if p.strip()
+        ]
+
         # Validation
         if not all([self.jira_base_url, self.jira_api_token, self.webhook_secret]):
             print("⚠️ Missing required environment variables")
@@ -28,3 +34,4 @@ class Config:
             print(f"   WEBHOOK_SECRET: {'✓' if self.webhook_secret else '✗'}")
         else:
             print("✅ All required environment variables loaded!")
+            print(f"🧼 Default hygiene projects: {', '.join(self.HYGIENE_DEFAULT_PROJECTS)}")

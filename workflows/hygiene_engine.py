@@ -15,7 +15,7 @@ Rules included:
   ✓ StaleTicketRule
   ✓ MissingFieldsRule
   ✓ WorkflowValidatorRule
-  ✓ DuplicateCheckRule
+  ✓ DuplicateCustomFieldsRule
 """
 
 from typing import Any, Dict, List, Optional
@@ -26,8 +26,8 @@ from core.config import Config
 from rules.missing_fields import MissingFieldsRule
 from rules.stale_tickets import StaleTicketRule
 from rules.workflow_validator import WorkflowValidatorRule
-from rules.duplicate_check import DuplicateCheckRule
 from rules.base_rule import BaseRule
+from rules.duplicate_custom_fields import DuplicateCustomFieldsRule
 
 
 def _build_rules(
@@ -74,10 +74,10 @@ def _build_rules(
 
     if enable_duplicate_check:
         rules.append(
-            DuplicateCheckRule(
-                lookback_days=14,
-                projects=projects,
-                add_comment=False,  # silent by default
+            DuplicateCustomFieldsRule(
+                enabled=True,
+                require_same_type=True,
+                ignore_names=[],
             )
         )
 
@@ -104,8 +104,12 @@ class HygieneEngine:
         config: Optional[Config] = None,
     ):
         self.config = config or Config()
+
+        # Keep a copy for meta + JQL construction in rules
+        self.projects: List[str] = list(projects or [])
+
         self.rules = _build_rules(
-            projects=projects,
+            projects=self.projects,
             enable_stale=enable_stale,
             enable_missing_fields=enable_missing_fields,
             enable_workflow_validator=enable_workflow_validator,
@@ -119,11 +123,24 @@ class HygieneEngine:
     def process(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Runs enabled rules that want to handle this event.
-        Returns a structured dict: { "rules": {<rule_name>: <result_dict>, ...} }
+        Returns a structured dict:
+        {
+          "rules": { <rule_name>: <result_dict>, ... },
+          "meta": { ... }
+        }
         """
-        out: Dict[str, Any] = {"rules": {}}
         event = (payload or {}).get("eventType") or "unknown"
         logger.info(f"HygieneEngine.process event={event}")
+
+        # initialize structured response
+        out: Dict[str, Any] = {
+            "rules": {},
+            "meta": {
+                "projects": self.projects,
+                "projects_csv": ", ".join(self.projects) if self.projects else "",
+                "event_type": event,
+            },
+        }
 
         for rule in self.rules:
             try:

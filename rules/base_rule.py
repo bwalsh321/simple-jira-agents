@@ -11,7 +11,6 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict
 from core.logging import logger
 
-
 class BaseRule(ABC):
     """Abstract base class that all hygiene rules inherit from."""
 

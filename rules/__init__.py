@@ -3,7 +3,7 @@ from .base_rule import BaseRule
 from .missing_fields import MissingFieldsRule
 from .stale_tickets import StaleTicketRule
 from .workflow_validator import WorkflowValidatorRule
-from .duplicate_check import DuplicateCheckRule
+from .duplicate_work_item_check import DuplicateCheckRule
 
 __all__ = [
     "BaseRule",

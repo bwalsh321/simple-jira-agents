@@ -78,7 +78,7 @@ def _extract_description(desc_obj):
 def _get_recent_tickets_context(jira, summary, description):
     """Find recent similar tickets for AI context"""
     try:
-        jql = "created >= '-2h' OR updated >= '-2h' ORDER BY created DESC"
+        jql = "created >= -2h OR updated >= -2h ORDER BY created DESC"
         search_result = jira.search_issues(jql, max_results=10)
         if "error" in search_result or not search_result.get("issues"):
             return ""

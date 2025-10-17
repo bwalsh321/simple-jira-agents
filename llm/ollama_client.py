@@ -9,7 +9,7 @@ import time
 import re
 from typing import Dict, Any
 
-from config import Config
+from core.config import Config
 
 import logging
 logger = logging.getLogger(__name__)

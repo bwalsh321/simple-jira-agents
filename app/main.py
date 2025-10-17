@@ -1,110 +1,140 @@
+# app/main.py
 """FastAPI server with specialized webhook endpoints"""
+from __future__ import annotations
 
 from fastapi import FastAPI, Request, HTTPException
-import hmac
-import hashlib
-import logging
-from config import Config
-from agents.l1_triage_bot import process_ticket as process_l1_triage
-from agents.admin_validator import process_admin_request
+from fastapi.responses import JSONResponse
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from core.config import Config
+from core.logging import logger
+from app.auth import verify_header_secret
+from app.webhook_handlers import (
+    handle_l1_triage,
+    handle_admin_validator,
+    handle_hygiene,
+)
+
+# health deps
+from tools.jira_api import JiraAPI
+from llm.ollama_client import test_ollama_connection
 
 app = FastAPI(title="Jira Simple Agents", version="1.0.0")
 config = Config()
 
-def verify_webhook_secret(request: Request, body: bytes) -> bool:
-    """Verify webhook secret"""
-    provided_secret = request.headers.get("x-webhook-secret", "")
-    return hmac.compare_digest(provided_secret, config.webhook_secret)
 
 @app.post("/api/v1/l1-triage-bot")
 async def l1_triage_webhook(request: Request):
-    """L1 Triage Bot - Incident support"""
-    body = await request.body()
-    
-    if not verify_webhook_secret(request, body):
+    """
+    L1 Triage Bot - Incident support
+    """
+    # read raw early so HMAC/hardening is possible later
+    _ = await request.body()
+
+    if not verify_header_secret(request):
         raise HTTPException(status_code=401, detail="Invalid webhook secret")
-    
+
     try:
         data = await request.json()
         issue = data.get("issue", {})
         issue_key = issue.get("key")
-        
         if not issue_key:
             raise HTTPException(status_code=400, detail="No issue key provided")
-        
+
         logger.info(f"L1 Triage webhook received for {issue_key}")
-        
-        # Process in background (for now, synchronous)
-        result = process_l1_triage(issue_key, issue, config)
-        
+        result = handle_l1_triage(data, config)
+
         return {
             "received": True,
             "issue_key": issue_key,
-            "result": result
+            "result": result,
         }
-        
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"L1 triage webhook error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/api/v1/admin-validator")
 async def admin_validator_webhook(request: Request):
-    """Admin Validator - Field requests"""
-    body = await request.body()
-    
-    if not verify_webhook_secret(request, body):
+    """
+    Admin Validator - Field requests
+    """
+    _ = await request.body()
+
+    if not verify_header_secret(request):
         raise HTTPException(status_code=401, detail="Invalid webhook secret")
-    
+
     try:
         data = await request.json()
         issue = data.get("issue", {})
         issue_key = issue.get("key")
-        
         if not issue_key:
             raise HTTPException(status_code=400, detail="No issue key provided")
-        
+
         logger.info(f"Admin validator webhook received for {issue_key}")
-        
-        result = process_admin_request(issue_key, issue, config)
-        
+        result = handle_admin_validator(data, config)
+
         return {
             "received": True,
             "issue_key": issue_key,
-            "result": result
+            "result": result,
         }
-        
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Admin validator webhook error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.post("/api/v1/hygiene")
+async def hygiene_webhook(request: Request):
+    """
+    Hygiene sweep endpoint (scheduled or event-driven).
+    """
+    if not verify_header_secret(request):
+        raise HTTPException(status_code=401, detail="Invalid webhook secret")
+
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    try:
+        result = handle_hygiene(body, config)
+        return JSONResponse(content=result, status_code=200)
+    except Exception as e:
+        logger.error(f"Hygiene webhook error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
-    from ollama_client import test_ollama_connection
-    from jira_api import JiraAPI
-    
-    # Test Ollama
+    """
+    Health check endpoint – validates LLM and Jira connectivity.
+    """
+    # LLM
     ollama_status = test_ollama_connection(config)
-    
-    # Test Jira
+
+    # Jira
     jira = JiraAPI(config)
     jira_status = jira.test_connection()
-    
+
+    status = "healthy" if jira_status.get("success") and ollama_status.get("status") == "success" else "degraded"
     return {
-        "status": "healthy" if jira_status.get("success") and ollama_status.get("status") == "success" else "degraded",
+        "status": status,
         "jira": jira_status,
         "ollama": ollama_status,
         "config": {
             "jira_url": config.jira_base_url,
             "ollama_url": config.ollama_url,
-            "model": config.model
-        }
+            "model": config.model,
+        },
     }
 
+
+# Optional: allow direct `python -m app.main` run
 if __name__ == "__main__":
     import uvicorn
+    logger.info("Starting dev server from app.main __main__")
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -223,27 +223,36 @@ class JiraAPI:
             logger.error(f"Options creation error: {e}")
             return {"error": str(e)}
 
-    def add_comment(self, issue_key: str, comment) -> Dict:
+    def add_comment(self, issue_key: str, comment, internal: bool = False) -> Dict:
         """Add comment to issue - supports both string and ADF format"""
         try:
-            url = f"/rest/api/3/issue/{issue_key}/comment"
-            if isinstance(comment, str):
-                payload = {
-                    "body": {
-                        "type": "doc",
-                        "version": 1,
-                        "content": [
-                            {
-                                "type": "paragraph",
-                                "content": [{"type": "text", "text": comment}],
-                            }
-                        ],
-                    }
-                }
+            if internal:
+                url = f"/rest/servicedeskapi/request/{issue_key}/comment"
+                if isinstance(comment, str):
+                    body_text = comment
+                else:
+                    body_text = str(comment)
+                payload = {"body": body_text, "public": False}
+                response = self._post(url, json=payload, headers={"Accept": "application/json"})
             else:
-                payload = comment
+                url = f"/rest/api/3/issue/{issue_key}/comment"
+                if isinstance(comment, str):
+                    payload = {
+                        "body": {
+                            "type": "doc",
+                            "version": 1,
+                            "content": [
+                                {
+                                    "type": "paragraph",
+                                    "content": [{"type": "text", "text": comment}],
+                                }
+                            ],
+                        }
+                    }
+                else:
+                    payload = comment
+                response = self._post(url, json=payload)
 
-            response = self._post(url, json=payload)
             if response.status_code == 201:
                 logger.info("Comment added successfully")
                 return {"success": True, "comment_id": response.json().get("id")}
@@ -253,6 +262,19 @@ class JiraAPI:
         except Exception as e:
             logger.error(f"Comment error: {e}")
             return {"error": str(e)}
+
+    def get_comments(self, issue_key: str) -> List[Dict]:
+        """Fetch issue comments"""
+        try:
+            response = self._get(f"/rest/api/3/issue/{issue_key}/comment")
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("comments", [])
+            logger.error(f"Get comments failed: {response.status_code} {response.text[:300]}")
+            return []
+        except Exception as e:
+            logger.error(f"Get comments error: {e}")
+            return []
 
     def search_issues(
         self,

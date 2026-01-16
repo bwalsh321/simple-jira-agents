@@ -8,6 +8,7 @@ from core.logging import logger
 # reuse your existing agent flows so nothing else needs to change
 from llm.agents.l1_triage_bot import process_ticket as _process_l1
 from llm.agents.admin_validator import process_admin_request as _process_admin
+from llm.agents.jira_architect_bot import process_ticket as _process_architect
 
 
 class LLMEngine:
@@ -34,6 +35,8 @@ class LLMEngine:
             return _process_l1(key, issue, self.config)
         elif self.agent == "admin_validator":
             return _process_admin(key, issue, self.config)
+        elif self.agent == "jira_architect":
+            return _process_architect(key, issue, self.config)
         else:
             return {"success": False, "error": f"unknown agent '{self.agent}'"}
 

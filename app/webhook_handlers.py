@@ -5,6 +5,7 @@ from core.config import Config
 
 # existing agent flows you already have
 from llm.agents.l1_triage_bot import process_ticket as process_l1_triage
+from llm.agents.jira_architect_bot import process_ticket as process_jira_architect
 from llm.agents.admin_validator import process_admin_request
 
 # your hygiene engine (class-based) you already call today
@@ -29,6 +30,16 @@ def handle_admin_validator(payload: dict, cfg: Config) -> dict:
     issue_key = issue.get("key")
     logger.info(f"handler:admin_validator key={issue_key}")
     return process_admin_request(issue_key, issue, cfg)
+
+
+def handle_jira_architect(payload: dict, cfg: Config) -> dict:
+    """
+    Thin wrapper around your Jira architect function.
+    """
+    issue = payload.get("issue") or {}
+    issue_key = issue.get("key")
+    logger.info(f"handler:jira_architect key={issue_key}")
+    return process_jira_architect(issue_key, issue, cfg)
 
 
 def handle_hygiene(payload: dict, cfg: Config) -> dict:

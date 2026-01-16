@@ -11,6 +11,7 @@ from app.auth import verify_header_secret
 from app.webhook_handlers import (
     handle_l1_triage,
     handle_admin_validator,
+    handle_jira_architect,
     handle_hygiene,
 )
 
@@ -84,6 +85,38 @@ async def admin_validator_webhook(request: Request):
         raise
     except Exception as e:
         logger.error(f"Admin validator webhook error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/jira-architect")
+async def jira_architect_webhook(request: Request):
+    """
+    Jira Architect - Admin/architecture guidance
+    """
+    _ = await request.body()
+
+    if not verify_header_secret(request):
+        raise HTTPException(status_code=401, detail="Invalid webhook secret")
+
+    try:
+        data = await request.json()
+        issue = data.get("issue", {})
+        issue_key = issue.get("key")
+        if not issue_key:
+            raise HTTPException(status_code=400, detail="No issue key provided")
+
+        logger.info(f"Jira architect webhook received for {issue_key}")
+        result = handle_jira_architect(data, config)
+
+        return {
+            "received": True,
+            "issue_key": issue_key,
+            "result": result,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Jira architect webhook error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
